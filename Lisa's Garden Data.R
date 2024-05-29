@@ -96,6 +96,7 @@ garden <- full_join(harvest_cleaned, spending_cleaned, by = "vegetable")
 
 garden_output <- na.omit(garden)
 
+
 print(garden, n = 44)
 
 #calculating differences between years in relation to money spent
@@ -132,26 +133,42 @@ garden_kpi3
 
 garden_kpi3$vegetable <- factor(garden_kpi3$vegetable, levels = garden_kpi3$vegetable[order(garden_kpi3$percent_column)])
 
+garden_kpi3 <- garden_kpi3 %>%
+  mutate(percent_column = round(percent_column, 2))
+install.packages("ggimage")
+library(ggimage)
 
-
-
-ggplot(garden_kpi3, aes(x = vegetable, y = percent_column, fill = factor(sign(percent_column)))) +
-  geom_bar(stat = "identity", position = "identity", color = "#8AACA6") +
+plot <- ggplot(garden_kpi3, aes(x = vegetable, y = percent_column, fill = factor(sign(percent_column)))) +
+  geom_bar(stat = "identity", position = "identity", width = 0.5) +
   scale_fill_manual(values = c("#963A3A", "#6DA564"), guide = FALSE) +
-  theme_minimal() +
   labs(
-    x = "Vegetable",
-    y = "Change from previous year, relative to spent money in %",
+    x = "",
+    y = "Revenue from previous year, relative to spent money in %",
     title = "Income from expenses",
     subtitle = "Change in revenue from 2020 to 2021 per $ spent"
   ) +
-  theme(
-    panel.background = element_rect(fill = "lightblue"),
-    plot.title = element_text(size = 20, hjust = 0.5),
-    plot.subtitle = element_text(size = 10, hjust = 0.5),
-  ) +
+  theme_grey() +
   annotate("text", x = Inf, y = -Inf, label = "Graphic: Jarkko Schaad | Source: Lisa's Vegetable Garden Data", 
-           hjust = 1.1, vjust = -1.5, size = 3)
+           hjust = 1.1, vjust = -1.5, size = 2.5) +
+  geom_text(aes(label=percent_column), size = 5, vjust = -0.5, color = "black")+
+  theme_light() +
+  theme(plot.title = element_text(size = 30, face = "bold"),
+              plot.subtitle = element_text(size = 12, face = "bold")) +
+  scale_y_continuous(breaks = c(-50, 0, 50, 100, 150),
+                     labels = c("-50%", "0%", "50%", "100%", "150%"),
+                     limits = c(-60, 160)) +
+  geom_image(
+    data = tibble(vegetable = 1.5, percent_column = 110),
+    aes(image = "ruebli.png"),
+    size = 0.45
+  )
 
+plot
 
-
+#save
+ggsave(
+  filename = "vegetableplot.jpg",
+  plot = last_plot(),
+  device = jpeg,
+  width = 10,
+  height = 5)
