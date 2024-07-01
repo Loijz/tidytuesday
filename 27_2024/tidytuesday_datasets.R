@@ -1,0 +1,145 @@
+install.packages("Rtools")
+library(urltools)
+install.packages("tidytuesdayR")
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+
+tuesdata <- tidytuesdayR::tt_load(2024, week = 27)
+
+tt_datasets <- tuesdata$tt_datasets
+tt_summary <- tuesdata$tt_summary
+tt_urls <- tuesdata$tt_urls
+tt_variables <- tuesdata$tt_variables
+
+# calculating mean of variables and observations per year
+tt_datasets2 <- tt_datasets %>%
+  group_by(year) %>%
+  mutate(
+    totvar = median(variables),
+    totobs = median(observations)
+  ) %>%
+  ungroup()
+
+str(tt_datasets)
+
+
+# Display the updated dataset
+print(tt_datasets2)
+
+#create a new dataset with only means of variables and observations per year
+varib_long <- tt_datasets2 %>%
+  select(year, totvar, totobs) %>%
+  distinct() %>%
+  pivot_longer(cols = c(totvar, totobs), names_to = "variable", values_to = "value")
+
+# Create bar plots
+# Create bar plot for median variables
+plot_totvar <- ggplot(varib_long %>% filter(variable == "totvar"), aes(x = year, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = position_dodge(), fill = "#5c5958") +
+  scale_y_continuous(breaks = seq(2, 10, by = 2)) +
+  scale_x_continuous(breaks = seq(2018, 2024, by = 1)) +
+  labs(
+    title = "Median amount of variables by Year (suspiciously similar)",
+    x = "Year",
+    y = "Median variables",
+    fill = "Variable"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10, "pt"),  # Adjust plot margins
+    plot.background = element_rect(color = "black", fill = NA, size = 1))  # Add border around plot)
+
+print(plot_totvar)
+
+# Create bar plot for median observations
+plot_totobs <- ggplot(varib_long %>% filter(variable == "totobs"), aes(x = year, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = position_dodge(), fill = "#5c5958") +
+  scale_x_continuous(breaks = seq(2018, 2024, by = 1)) +
+  labs(
+    title = "Median amount of observations by Year",
+    x = "Year",
+    y = "Median observations"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.margin = margin(10, 10, 10, 10, "pt"),  # Adjust plot margins
+        plot.background = element_rect(color = "black", fill = NA, size = 1))  # Add border around plot))
+
+print(plot_totobs)
+
+
+# Combine the plots side by side
+combined_plot <- plot_totvar + plot_totobs
+
+# Display the combined plot
+combined_plot
+
+library(scales)
+
+# Identify the threshold for outliers (this is an arbitrary example, adjust as needed)
+outlier_threshold <- 1000000
+
+# Create a new variable to mark outliers
+tt_datasets <- tt_datasets %>%
+  mutate(is_outlier = ifelse(observations > outlier_threshold, TRUE, FALSE))
+summary(tt_datasets)
+
+
+
+
+tt_datasets <- tt_datasets %>%
+  mutate(year = as.factor(year))
+
+
+
+# Identify outliers
+outliers <- tt_datasets %>%
+  filter(observations > quantile(observations, 0.993))
+
+# Identify non-outliers
+non_outliers <- tt_datasets %>%
+  filter(observations <= quantile(observations, 0.993))
+
+# Create scatter plot
+tidyplot <- ggplot(non_outliers, aes(x = observations, y = variables, color = year)) + 
+  geom_point(alpha = 0.5) +
+  geom_text(data = outliers, aes(x = observations, y = variables, label = observations), 
+            vjust = -0.5, hjust = 1, size = 3, color = "black") +  # Add observation values above outliers
+  scale_color_manual(values = c("red", "blue", "green", "purple", "orange", "cyan", "pink"), 
+                     breaks = unique(tt_datasets$year)) +  # Custom color palette and specify breaks
+  labs(
+    title = "Observations vs Variables",
+    x = "Observations",
+    y = "Variables",
+    color = "Year"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",  # Position legend on the right
+    plot.title = element_text(hjust = 0.5),
+    panel.grid = element_blank(),  # Remove grid lines
+    plot.margin = margin(10, 10, 10, 10, "pt"),  # Adjust plot margins
+    plot.background = element_rect(color = "black", fill = NA, size = 1)  # Add border around plot
+  ) +
+  coord_cartesian(xlim = c(min(tt_datasets$observations), quantile(tt_datasets$observations, 0.993) * 1.05)) +
+  guides(color = guide_legend(title = "Year"))  # Specify legend title
+
+print(tidyplot)
+
+
+# Combine plots
+combined <- (tidyplot / combined_plot) +
+  plot_layout(ncol = 1, heights = c(3, 6)) +  # Adjust heights as needed
+  plot_annotation(
+    title = "Peak of observations reached in 2022",
+    caption = "Graphics: Jarkko Schaad | tidytuesday 27_2024",
+    theme = theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0))
+  )
+
+# Save combined plot as JPG
+ggsave("combined_plot.jpg", plot = combined, width = 14, height = 7, dpi = 300)
+
+

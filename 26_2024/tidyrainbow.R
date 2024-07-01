@@ -7,7 +7,7 @@ library(tidyverse)            # All things tidy
 library(scales)
 library(fontawesome)
 library(ggtext)
-install.packages("showtext")
+#install.packages("showtext")
 library(showtext)
 library(colorspace)
 library(patchwork)
